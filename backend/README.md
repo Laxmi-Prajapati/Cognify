@@ -90,3 +90,4 @@ API docs: http://localhost:8000/docs
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformers model |
 | `FAISS_TOP_K` | `5` | Number of chunks to retrieve per query |
 | `ISOLATION_FOREST_CONTAMINATION` | `0.05` | Expected anomaly rate (5%) |
+| `MONGODB_URI` | — | Required. Get from cloud.mongodb.com |
