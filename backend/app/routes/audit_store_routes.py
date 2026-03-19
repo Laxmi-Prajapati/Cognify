@@ -124,7 +124,7 @@ async def audit_and_save(uid: str, file: UploadFile = File(...)):
     try:
         save_payload = dict(audit_result)
         save_payload["all_records"] = save_payload.get("all_records", [])[:1000]
-        save_payload["anomalies"] = save_payload.get("anomalies", [])[:1000]
+        save_payload["anomalies"] = save_payload.get("anomalies", [])[:15000]
         audit_id = repo.save_audit(uid, save_payload)
         audit_result["audit_id"] = audit_id
         print(f"✅ Saved to MongoDB: {audit_id}")
