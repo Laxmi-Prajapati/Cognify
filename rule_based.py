@@ -80,8 +80,6 @@ class FilterRequest(BaseModel):
     severity: Optional[List[str]] = None
     thresholds: Optional[Dict[str, float]] = None
 
-
-
 @app.get("/filters/options")
 async def get_filter_options():
     """Get available filter values for frontend"""

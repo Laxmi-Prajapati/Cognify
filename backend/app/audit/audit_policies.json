@@ -1,0 +1,116 @@
+{
+  "audit_policies": [
+    {
+      "policy_name": "Incorrect GST Calculation",
+      "description": "CGST + SGST should equal 5% of Sub_Total for local food orders (tolerance ±1).",
+      "condition": "(Order_Source == 'Local') AND (abs(CGST_Amount + SGST_Amount - (0.05 * Sub_Total)) > 1) AND (Sub_Total > 0) AND (Non_Taxable == 0)",
+      "relevant_columns": ["Order_Source", "CGST_Amount", "SGST_Amount", "Sub_Total", "Non_Taxable"],
+      "severity_range": [0.3, 0.5],
+      "action": "Recalculate GST and update records. Flag as 'Incorrect GST Calculation'."
+    },
+    {
+      "policy_name": "Invalid Service Charge for Online Order",
+      "description": "Online orders (Zomato/Swiggy) must not have service charges.",
+      "condition": "(Is_Online == 1) AND (Service_Charge_Amount > 0)",
+      "relevant_columns": ["Is_Online", "Service_Charge_Amount"],
+      "severity_range": [0.3, 0.7],
+      "action": "Remove service charge from online order. Flag as 'Invalid Service Charge for Online Order'."
+    },
+    {
+      "policy_name": "Tax Applied to Non-Taxable Item",
+      "description": "Items marked Non_Taxable should have zero tax amounts.",
+      "condition": "(Non_Taxable > 0) AND ((CGST_Amount + SGST_Amount + VAT_Amount) > 0)",
+      "relevant_columns": ["Non_Taxable", "CGST_Amount", "SGST_Amount", "VAT_Amount"],
+      "severity_range": [0.3, 0.5],
+      "action": "Remove tax amounts from non-taxable item. Flag as 'Tax Applied to Non-Taxable Item'."
+    },
+    {
+      "policy_name": "Invalid Payment Method for Online Order",
+      "description": "Online orders must use Online, Zomato Pay, or Paytm payment methods.",
+      "condition": "(Is_Online == 1) AND (Payment_Type NOT IN ['Online', 'Other [Zomato Pay]', 'Other [Paytm]'])",
+      "relevant_columns": ["Is_Online", "Payment_Type"],
+      "severity_range": [0.5, 0.7],
+      "action": "Verify payment method for online order. Flag as 'Invalid Payment Method for Online Order'."
+    },
+    {
+      "policy_name": "Local Order with Aggregator Data",
+      "description": "Local orders should not have aggregator order numbers (Zomato/Swiggy).",
+      "condition": "(Order_Source == 'Local') AND (Has_Aggregator_No == 1)",
+      "relevant_columns": ["Order_Source", "Has_Aggregator_No"],
+      "severity_range": [0.3, 0.5],
+      "action": "Clear aggregator fields or reclassify order. Flag as 'Local Order with Aggregator Data'."
+    },
+    {
+      "policy_name": "Late Cancellation",
+      "description": "Cancelled orders with food preparation time exceeding 30 minutes.",
+      "condition": "(Status CONTAINS 'Cancelled') AND ((Food_Preparation_Time_Z > 30) OR (Food_Preparation_Time_S > 30))",
+      "relevant_columns": ["Status", "Food_Preparation_Time_Z", "Food_Preparation_Time_S"],
+      "severity_range": [0.5, 0.7],
+      "action": "Review cancellation reason and process. Flag as 'Late Cancellation'."
+    },
+    {
+      "policy_name": "High-Value Cancellation",
+      "description": "Cancelled orders with total value exceeding ₹1000.",
+      "condition": "(Status CONTAINS 'Cancelled') AND (Cancelled_Invoice_Total_co > 1000)",
+      "relevant_columns": ["Status", "Cancelled_Invoice_Total_co"],
+      "severity_range": [0.7, 1.0],
+      "action": "Investigate cancellation cause. Flag as 'High-Value Cancellation'."
+    },
+    {
+      "policy_name": "Unapproved Complimentary Order",
+      "description": "Complimentary orders must have an assigned approver.",
+      "condition": "(Status == 'Complimentary') AND (Assign_To IS NULL OR Assign_To == '')",
+      "relevant_columns": ["Status", "Assign_To"],
+      "severity_range": [0.5, 0.7],
+      "action": "Assign approver or verify policy. Flag as 'Unapproved Complimentary Order'."
+    },
+    {
+      "policy_name": "Post-Bill Service Charge Removal",
+      "description": "Service charge was manually removed after billing (modify_comment contains 'sc' or 'removed sc').",
+      "condition": "(Was_Modified == 1) AND (Modification_Reason CONTAINS 'sc')",
+      "relevant_columns": ["Was_Modified", "Modification_Reason", "Service_Charge_Amount"],
+      "severity_range": [0.5, 0.8],
+      "action": "Review whether service charge removal was authorized. Flag as 'Post-Bill Modification: SC Removed'."
+    },
+    {
+      "policy_name": "Aggregator Payment on Dine-In Order",
+      "description": "Dine-in orders should not use aggregator payment methods (Zomato Pay, Paytm) unless Is_Online.",
+      "condition": "(Order_Type == 'Dine In') AND (Is_Online == 0) AND (Payment_Type IN ['Other [Zomato Pay]', 'Other [Paytm]'])",
+      "relevant_columns": ["Order_Type", "Is_Online", "Payment_Type"],
+      "severity_range": [0.4, 0.6],
+      "action": "Verify if this is a legitimate in-restaurant aggregator payment. Flag as 'Aggregator Payment on Dine-In'."
+    },
+    {
+      "policy_name": "Date and Timestamp Mismatch",
+      "description": "The Date field and Timestamp field refer to different calendar days.",
+      "condition": "(Date_Timestamp_Mismatch == 1)",
+      "relevant_columns": ["Date", "Timestamp", "Date_Timestamp_Mismatch"],
+      "severity_range": [0.2, 0.4],
+      "action": "Verify correct transaction date. Flag as 'Date/Timestamp Mismatch'."
+    },
+    {
+      "policy_name": "Discount Without Tax Adjustment",
+      "description": "When a discount is applied, Tax should be recalculated on (Sub_Total - Discount). Checks if Tax > 10% of (Sub_Total - Discount) with tolerance ±2.",
+      "condition": "(Discount > 0) AND (Sub_Total > Discount) AND (Tax > ((Sub_Total - Discount) * 0.10 + 2))",
+      "relevant_columns": ["Discount", "Sub_Total", "Tax"],
+      "severity_range": [0.3, 0.6],
+      "action": "Recalculate tax after applying discount. Flag as 'Tax Not Adjusted for Discount'."
+    },
+    {
+      "policy_name": "Online Order Tax Double-Count Risk",
+      "description": "For Zomato/Swiggy orders, local Tax should be 0 since tax is handled by the aggregator (Online_Tax_Calculated_z/s > 0).",
+      "condition": "(Is_Online == 1) AND (Tax > 0) AND ((Online_Tax_Calculated_z > 0) OR (Online_Tax_Calculated_s > 0))",
+      "relevant_columns": ["Is_Online", "Tax", "Online_Tax_Calculated_z", "Online_Tax_Calculated_s"],
+      "severity_range": [0.5, 0.8],
+      "action": "Remove local tax from aggregator order to prevent double taxation. Flag as 'Online Order Tax Double-Count'."
+    },
+    {
+      "policy_name": "Zero Price Item with Tax",
+      "description": "Items with Price=0 (e.g., complementary water) should not have any tax amounts.",
+      "condition": "(Price == 0) AND (Sub_Total == 0) AND ((CGST_Amount + SGST_Amount + VAT_Amount + Tax) > 0)",
+      "relevant_columns": ["Price", "Sub_Total", "CGST_Amount", "SGST_Amount", "VAT_Amount", "Tax"],
+      "severity_range": [0.3, 0.5],
+      "action": "Remove tax from zero-price item. Flag as 'Tax on Zero-Price Item'."
+    }
+  ]
+}
